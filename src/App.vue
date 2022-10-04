@@ -5,19 +5,15 @@
     <h5>Choose a role:</h5>
     <button class="mt-2" @click="alice()">Alice</button> 
     <button class="mt-2 ml-4" @click="bob()">Bob</button>
+    <h3 class="mt-4">{{role}}</h3>
 
     <div class="mt-4" v-if="role == 'Alice'">
-      <h3>{{role}}</h3>
-
       <button @click="createContract()">Click to Deploy Contract</button>
-
       <p class="mt-2">Contract Address (COPY):</p>
       <h4>{{ ctcInfoStr }}</h4>
     </div>
 
     <div class="mt-4" v-else>
-      <h3>{{role}}</h3>
-
       <div class="m-4">
         <b-form-input sm v-model="ctcStr" placeholder="PASTE the contract created by Alice here"></b-form-input>
         <button class="mt-2" @click="attachContract()">Attach Contract</button>
@@ -53,8 +49,8 @@
 
 
     <p> Contract Address: {{ address }} </p>
-    <p> Balance: {{ bal }} ALGO</p> 
     <p> Balance (atomic form): {{ balAtomic}} ALGO</p>
+    <p> Balance: {{ bal }} ALGO</p> 
 
     <button @click="updateBalance()">Update your Balance</button>
   </div>
