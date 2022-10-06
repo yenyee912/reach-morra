@@ -3,4 +3,5 @@ build/*
 .reach/*
 node_modules/
 public/
-.reach
+reach
+.DS_Store

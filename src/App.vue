@@ -13,7 +13,7 @@
       <h4>{{ ctcInfoStr }}</h4>
     </div>
 
-    <div class="mt-4" v-else>
+    <div class="mt-4" v-else-if="role== 'Bob'">
       <div class="m-4">
         <b-form-input sm v-model="ctcStr" placeholder="PASTE the contract created by Alice here"></b-form-input>
         <button class="mt-2" @click="attachContract()">Attach Contract</button>
@@ -67,14 +67,14 @@ stdlib.setProviderByName("TestNet");
 
 const toSU = (au) => stdlib.formatCurrency(au, 4);
 
-let commonInteract = {};
-let aliceInteract = {};
-let bobInteract = {};
+var commonInteract = {};
+var aliceInteract = {};
+var bobInteract = {};
 
 const OUTCOME = ["NULL", "Alice Wins", "Bob Wins"];
 
-const secret = process.env.VUE_APP_SECRET1;
-const secret2 = process.env.VUE_APP_SECRET2;
+const secret1 = process.env.VUE_APP_SECRET_1;
+const secret2 = process.env.VUE_APP_SECRET_2;
 
 export default {
   data: () => {
@@ -126,7 +126,7 @@ export default {
         getFingerCount: async () => {
           this.getFingerCountState = true;
           await this.waitUntil(() => this.hand !== "");
-          console.log("You played ", this.hand + " finger(s)");
+          console.log(this.hand);
           const hand = stdlib.parseCurrency(this.hand);
           this.hand = "";
           this.getFingerCountState = false;
@@ -182,22 +182,25 @@ export default {
     },
 
     async alice() {
-      this.allFunc();
+      await this.allFunc();
       aliceInteract = {
         ...commonInteract,
         wager: stdlib.parseCurrency(1),
         deadline: stdlib.parseCurrency(10),
       };
-
-      console.log("Alice: ", aliceInteract);
+      
       try {
         this.role = "Alice";
         // dont create new acc, use algo wallet
-        this.acc = await stdlib.newAccountFromMnemonic(secret);
-        this.address = stdlib.formatAddress(this.acc.getAddress());         
-        this.balAtomic = await stdlib.balanceOf(this.acc);
-        this.bal = String(stdlib.formatCurrency(this.balAtomic, 4));
-      } catch (err) {
+        this.acc = await stdlib.newAccountFromMnemonic(secret1);
+        // console.log(this.acc, secret1)
+
+        // this.address = stdlib.formatAddress(this.acc.getAddress());         
+        // this.balAtomic = await stdlib.balanceOf(this.acc);
+        // this.bal = String(stdlib.formatCurrency(this.balAtomic, 4));
+      } 
+      
+      catch (err) {
         console.log(err);
       }
     },
