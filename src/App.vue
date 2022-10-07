@@ -2,20 +2,23 @@
   <div id="app">
     <h1>Morra Game</h1>
 
-    <h5>Choose a role:</h5>
-    <button class="mt-2" @click="alice()">Alice</button> 
-    <button class="mt-2 ml-4" @click="bob()">Bob</button>
+    <div v-if="role ==''">
+      <h5>Choose a role:</h5>
+      <button class="mt-2" @click="alice()">Alice</button> 
+      <button class="mt-2 ml-4" @click="bob()">Bob</button>
+    </div>
+      
     <h3 class="mt-4">{{role}}</h3>
 
     <div class="mt-4" v-if="role == 'Alice'">
       <button @click="createContract()">Click to Deploy Contract</button>
-      <p class="mt-2">Contract Address (COPY):</p>
-      <h4>{{ ctcInfoStr }}</h4>
+      <p class="mt-2">COPY the game contract info (COPY):</p>
+      <h4>{{ deployedContractInfo }}</h4>
     </div>
 
     <div class="mt-4" v-else-if="role== 'Bob'">
       <div class="m-4">
-        <b-form-input sm v-model="ctcStr" placeholder="PASTE the contract created by Alice here"></b-form-input>
+        <b-form-input sm v-model="deployedContractInfo" placeholder="PASTE the contract info here"></b-form-input>
         <button class="mt-2" @click="attachContract()">Attach Contract</button>
       </div>
 
@@ -27,15 +30,15 @@
       </div>
     </div>
 
-    <div v-if="displayHandsState">
+    <div v-if="displayFingerState">
       <h4>Last result are :</h4>
       <p> Alice hand: {{ aliceHands }} | Alice guess: {{ aliceGuess }} </p>
       <p> Bob hand: {{ bobHands }} | Bob guess: {{ bobGuess }}</p>
     </div>
 
-    <div v-if="getHandState">
+    <div v-if="getFingerState">
       Play your hand :
-      <button v-for="(x, index) in 6" :key="x" :index="index" @click="readHand(0)">{{index}}</button>
+      <button v-for="(x, index) in 6" :key="x" :index="index" @click="readFinger(index)">{{index}}</button>
     </div>
 
     <div v-if="getGuessState">
@@ -47,12 +50,14 @@
       <h5>{{ result }}</h5>
     </div>
 
+    <div v-if="role !=''">
+      <p> {{role}}'s Contract Address: {{ address }} </p>
+      <p> Balance (atomic form): {{ balAtomic}} ALGO</p>
+      <p> Balance: {{ bal }} ALGO</p> 
 
-    <p> Contract Address: {{ address }} </p>
-    <p> Balance (atomic form): {{ balAtomic}} ALGO</p>
-    <p> Balance: {{ bal }} ALGO</p> 
 
-    <button @click="updateBalance()">Update your Balance</button>
+      <button @click="updateBalance()">Update your Balance</button>
+    </div>
   </div>
 </template>
 
@@ -61,11 +66,12 @@ import * as backend from "../build/index.main.mjs";
 import { loadStdlib } from "@reach-sh/stdlib";
 
 const stdlib = loadStdlib("ALGO");
+
 stdlib.setProviderByName("TestNet");
 
 // console.log(stdlib);
 
-const toSU = (au) => stdlib.formatCurrency(au, 4);
+const toStandardUnit = (au) => stdlib.formatCurrency(au, 4);
 
 var commonInteract = {};
 var aliceInteract = {};
@@ -84,19 +90,18 @@ export default {
       address: "",
       balAtomic: 0,
       bal: 0,
-      ctc: "",
-      ctcInfoStr: "",
-      ctcStr: "",
-      handOption: [],
+      
+      deployedContractInfo: "",
+      morraContract: "",
 
       contractCreated: false,
       displayResultState: false,
-      displayHandsState: false,
+      displayFingerState: false,
       getGuessState: false,
-      getHandState: false,
+      getFingerState: false,
 
       wager: 0,
-      hand: "",
+      finger: "",
       guess: "",
       aliceHands: "",
       aliceGuess: "",
@@ -124,13 +129,15 @@ export default {
         },
 
         getFingerCount: async () => {
-          this.getFingerCountState = true;
-          await this.waitUntil(() => this.hand !== "");
-          console.log(this.hand);
-          const hand = stdlib.parseCurrency(this.hand);
-          this.hand = "";
-          this.getFingerCountState = false;
-          return hand;
+          this.getFingerState = true;
+          await this.waitUntil(() => this.finger !== "");
+          console.log(this.finger);
+          
+          let fingerCount = stdlib.parseCurrency(this.finger);
+          this.finger = "";
+          this.getFingerState = false;
+          
+          return fingerCount;
         },
 
         getGuess: async () => {
@@ -154,16 +161,16 @@ export default {
     },
 
     reportHand(alice, aliceGuess, bob, bobGuess) {
-      this.aliceHands = toSU(alice);
-      this.aliceGuess = toSU(aliceGuess);
-      this.bobHands = toSU(bob);
-      this.bobGuess = toSU(bobGuess);
+      this.aliceHands = toStandardUnit(alice);
+      this.aliceGuess = toStandardUnit(aliceGuess);
+      this.bobHands = toStandardUnit(bob);
+      this.bobGuess = toStandardUnit(bobGuess);
 
-      this.displayHandsState = true;
+      this.displayFingerState = true;
     },
 
-    readHand(hand) {
-      this.hand = hand;
+    readFinger(hand) {
+      this.finger = hand;
     },
 
     readGuess(guess) {
@@ -171,21 +178,29 @@ export default {
     },
 
     async createContract() {
-      this.ctc = await this.acc.contract(backend);
-      this.ctc.p.Alice(aliceInteract); // refer to index.rsh
+      this.morraContract = await this.acc.contract(backend);
+      console.log(this.morraContract)
+      console.log(this.morraContract.p)
 
-      let info = await this.ctc.getInfo();
-      this.ctcInfoStr = JSON.stringify(info);
+      this.morraContract.p.Alice(aliceInteract); // refer to index.rsh
 
-      this.contractCreated = true;
-      await this.updateBalance();
+      // this.morraContract = await this.morraContract.getContractAddress();
+      this.deployedContractInfo = JSON.stringify( await this.morraContract.getInfo());
+
+      if (this.morraContract!= ''){
+        this.contractCreated = true;
+        await this.updateBalance();
+        console.log("done created contract")
+      }
+
     },
 
     async alice() {
       await this.allFunc();
+
       aliceInteract = {
         ...commonInteract,
-        wager: stdlib.parseCurrency(1),
+        wager: stdlib.parseCurrency(0.5), // offer 1 algo as wager
         deadline: stdlib.parseCurrency(10),
       };
       
@@ -195,9 +210,14 @@ export default {
         this.acc = await stdlib.newAccountFromMnemonic(secret1);
         // console.log(this.acc, secret1)
 
-        // this.address = stdlib.formatAddress(this.acc.getAddress());         
-        // this.balAtomic = await stdlib.balanceOf(this.acc);
-        // this.bal = String(stdlib.formatCurrency(this.balAtomic, 4));
+        this.address = stdlib.formatAddress(this.acc.getAddress()); 
+        // console.log(this.address) 
+
+        this.balAtomic = await stdlib.balanceOf(this.acc);
+        // console.log('sdssd', this.balAtomic) 
+
+        this.bal = String(stdlib.formatCurrency(this.balAtomic, 4));
+
       } 
       
       catch (err) {
@@ -209,10 +229,9 @@ export default {
       this.acceptWager = res;
     },
 
-    async attachContract() {
-      this.ctc = await this.acc.contract(backend, JSON.parse(this.ctcStr));
-      // console.log("ssss: ", this.ctcStr);
-      await this.ctc.p.Bob(bobInteract);
+    async attachContract() {      
+      this.morraContract = await this.acc.contract(backend, JSON.parse(this.deployedContractInfo));
+      await this.morraContract.p.Bob(bobInteract);
       // console.log("bobsss: ", bobInteract);
       await this.updateBalance();
     },
@@ -222,7 +241,7 @@ export default {
       bobInteract = {
         ...commonInteract,
         acceptWager: async (wager) => {
-          this.wager = toSU(wager),
+          this.wager = toStandardUnit(wager),
           this.waitUntil(() => this.acceptWager == true);
           if (this.acceptWager == false) {
             process.exit(0);
