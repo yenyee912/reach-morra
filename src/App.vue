@@ -11,9 +11,13 @@
     <h3 class="mt-4">{{role}}</h3>
 
     <div class="mt-4" v-if="role == 'Alice'">
-      <button @click="createContract()">Click to Deploy Contract</button>
-      <p class="mt-2">COPY the game contract info (COPY):</p>
-      <h4>{{ deployedContractInfo }}</h4>
+      <div v-if="deployedContractInfo!=''">
+        <h4 class="mt-2">COPY the game contract info</h4>
+        <h5>{{ deployedContractInfo }}</h5>
+      </div>      
+      
+      <button v-else class="m-4" @click="createContract()">Click to Deploy Contract</button>
+
     </div>
 
     <div class="mt-4" v-else-if="role== 'Bob'">
@@ -28,27 +32,35 @@
         <button class="mt-2" @click="yesnoWager(true)">YES</button>
         <button class="mt-2 ml-4" @click="yesnoWager(false)">NO</button>
       </div>
+
     </div>
 
+    <hr />
+    
     <div v-if="displayFingerState">
-      <h4>Last result are :</h4>
-      <p> Alice hand: {{ aliceHands }} | Alice guess: {{ aliceGuess }} </p>
-      <p> Bob hand: {{ bobHands }} | Bob guess: {{ bobGuess }}</p>
+      <h5>Outcome: </h5>
+      <p> Alice finger: {{ fingerAlice }} | Alice guess: {{ guessAlice }} </p>
+      <p> Bob finger: {{ fingerBob }} | Bob guess: {{ guessBob }}</p>
+    </div>
+
+    <div v-if="displayResultState">
+      <h4>Last result are :</h4><h5>{{ gameOutcome }}</h5>
     </div>
 
     <div v-if="getFingerState">
-      Play your hand :
+      Play your finger :
       <button v-for="(x, index) in 6" :key="x" :index="index" @click="readFinger(index)">{{index}}</button>
     </div>
+
+    <!-- {{getFingerState}}
+    {{gameOutcome}} -->
 
     <div v-if="getGuessState">
       Shout your total guess:
       <button v-for="(x, index) in 11" :key="x" :index="index" @click="readGuess(index)">{{index}}</button>
     </div>
 
-    <div v-if="displayResultState">
-      <h5>{{ result }}</h5>
-    </div>
+    <hr />
 
     <div v-if="role !=''">
       <p> {{role}}'s Contract Address: {{ address }} </p>
@@ -77,8 +89,6 @@ var commonInteract = {};
 var aliceInteract = {};
 var bobInteract = {};
 
-const OUTCOME = ["NULL", "Alice Wins", "Bob Wins"];
-
 const secret1 = process.env.VUE_APP_SECRET_1;
 const secret2 = process.env.VUE_APP_SECRET_2;
 
@@ -100,14 +110,16 @@ export default {
       getGuessState: false,
       getFingerState: false,
 
+      outcomeOpt: ["NULL", "Alice Wins", "Bob Wins"],
+
       wager: 0,
       finger: "",
       guess: "",
-      aliceHands: "",
-      aliceGuess: "",
-      bobHands: "",
-      bobGuess: "",
-      result: "",
+      fingerAlice: "",
+      guessAlice: "",
+      fingerBob: "",
+      guessBob: "",
+      gameOutcome: "",
       acceptWager: false,
     };
   },
@@ -116,12 +128,14 @@ export default {
       commonInteract = {
         ...stdlib.hasRandom,
 
-        reportResult: async (result) => {
-          this.reportResult(result);
+        reportOutcome: async (result) => {
+          this.reportOutcome(result);
+          console.log("res from all func: ", result)
+
         },
 
-        reportHand: async (alice, aliceGuess, bob, bobGuess) => {
-          this.reportHand(alice, aliceGuess, bob, bobGuess);
+        reportFinger: async (alice, guessAlice, bob, guessBob) => {
+          this.reportFinger(alice, guessAlice, bob, guessBob);
         },
 
         informTimeout: () => {
@@ -152,29 +166,28 @@ export default {
       };
     },
 
-    async reportResult(result) {
-      this.result = OUTCOME[result];
-      
+    async reportOutcome(x) {
+      this.gameOutcome = this.outcomeOpt[x]; //x= index
+      console.log(x)
       this.displayResultState = true;
-      
       await this.updateBalance();
     },
 
-    reportHand(alice, aliceGuess, bob, bobGuess) {
-      this.aliceHands = toStandardUnit(alice);
-      this.aliceGuess = toStandardUnit(aliceGuess);
-      this.bobHands = toStandardUnit(bob);
-      this.bobGuess = toStandardUnit(bobGuess);
+    reportFinger(alice, guessAlice, bob, guessBob) {
+      this.fingerAlice = toStandardUnit(alice);
+      this.guessAlice = toStandardUnit(guessAlice);
+      this.fingerBob = toStandardUnit(bob);
+      this.guessBob = toStandardUnit(guessBob);
 
       this.displayFingerState = true;
     },
 
-    readFinger(hand) {
-      this.finger = hand;
+    readFinger(x) {
+      this.finger = x;
     },
 
-    readGuess(guess) {
-      this.guess = guess;
+    readGuess(x) {
+      this.guess = x;
     },
 
     async createContract() {
@@ -200,7 +213,7 @@ export default {
 
       aliceInteract = {
         ...commonInteract,
-        wager: stdlib.parseCurrency(0.5), // offer 1 algo as wager
+        wager: stdlib.parseCurrency(1), // offer 1 algo as wager
         deadline: stdlib.parseCurrency(10),
       };
       
@@ -225,8 +238,8 @@ export default {
       }
     },
 
-    async yesnoWager(res) {
-      this.acceptWager = res;
+    async yesnoWager(x) {
+      this.acceptWager = x;
     },
 
     async attachContract() {      
